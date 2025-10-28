@@ -33,4 +33,5 @@ jobs:
         run: |
           IMAGE_NAME="${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
           docker build -t $IMAGE_NAME .
+          az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
           docker push $IMAGE_NAME
