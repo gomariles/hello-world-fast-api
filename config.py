@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     redis_password: Optional[str] = None
     redis_ssl: bool = False
     redis_db: int = 0
+    redis_use_entraid: bool = False  # Enable Entra ID authentication with Managed Identity
+    redis_username: str = "default"  # Username for Entra ID authentication (usually "default" or object ID)
     
     # Default key for GET endpoint when no key is provided
     default_key: str = "default"

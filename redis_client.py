@@ -1,7 +1,47 @@
 import redis
 import logging
-from typing import Optional, Dict, Any
+import time
+from typing import Optional, Dict, Any, Tuple, Union
+from azure.identity import DefaultAzureCredential
+from redis.credentials import CredentialProvider
 from config import settings
+
+
+class EntraIDCredentialProvider(CredentialProvider):
+    """Credential provider for Azure Entra ID authentication with Managed Identity."""
+    
+    def __init__(self, username: str = "default"):
+        """
+        Initialize the Entra ID credential provider.
+        
+        Args:
+            username: The username for Redis authentication (typically "default" or object ID)
+        """
+        self.username = username
+        self.credential = DefaultAzureCredential()
+        self.logger = logging.getLogger(__name__)
+        self._token = None
+        self._token_expiry = 0
+    
+    def get_credentials(self) -> Union[Tuple[str], Tuple[str, str]]:
+        """
+        Get credentials for Redis authentication.
+        Returns a tuple of (username, token) for Entra ID authentication.
+        """
+        # Refresh token if it's expired or about to expire (5 minutes buffer)
+        current_time = time.time()
+        if self._token is None or current_time >= (self._token_expiry - 300):
+            try:
+                # Azure Redis Cache scope
+                token = self.credential.get_token("https://redis.azure.com/.default")
+                self._token = token.token
+                self._token_expiry = token.expires_on
+                self.logger.info("Successfully obtained new Entra ID token for Redis")
+            except Exception as e:
+                self.logger.error(f"Failed to obtain Entra ID token: {str(e)}")
+                raise
+        
+        return (self.username, self._token)
 
 
 class RedisClient:
@@ -15,18 +55,30 @@ class RedisClient:
         """Get or create Redis client with proper configuration."""
         if self._client is None:
             try:
-                self._client = redis.Redis(
-                    host=settings.redis_host,
-                    port=settings.redis_port,
-                    password=settings.redis_password,
-                    ssl=settings.redis_ssl,
-                    db=settings.redis_db,
-                    decode_responses=True,
-                    socket_connect_timeout=5,
-                    socket_timeout=5,
-                    retry_on_timeout=True,
-                    health_check_interval=30
-                )
+                # Common configuration for all Redis connections
+                redis_config = {
+                    "host": settings.redis_host,
+                    "port": settings.redis_port,
+                    "ssl": settings.redis_ssl,
+                    "db": settings.redis_db,
+                    "decode_responses": True,
+                    "socket_connect_timeout": 5,
+                    "socket_timeout": 5,
+                    "retry_on_timeout": True,
+                    "health_check_interval": 30
+                }
+                
+                # Add authentication-specific configuration
+                if settings.redis_use_entraid:
+                    self.logger.info("Configuring Redis client with Entra ID authentication")
+                    credential_provider = EntraIDCredentialProvider(username=settings.redis_username)
+                    redis_config["credential_provider"] = credential_provider
+                else:
+                    self.logger.info("Configuring Redis client with password authentication")
+                    redis_config["password"] = settings.redis_password
+                
+                self._client = redis.Redis(**redis_config)
+                
                 # Test connection
                 self._client.ping()
                 self.logger.info("Redis connection established successfully")
