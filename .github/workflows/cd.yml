@@ -59,6 +59,6 @@ jobs:
           containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
           targetPort: 8000
           location: spaincentral
-          environmentVariables: APP_NAME=FastAPI Redis Cache APIAPP_VERSION=1.0.0 DEBUG=false
+          environmentVariables: '"APP_NAME=FastAPI Redis Cache API" "APP_VERSION=1.0.0" "DEBUG=false"'
           ingress: external
           
