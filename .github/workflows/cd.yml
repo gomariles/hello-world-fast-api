@@ -14,6 +14,8 @@ env:
   AZURE_CONTAINER_REGISTRY: "acaacr"
   RESOURCE_GROUP: "aca"
   IMAGE_NAME: "hello-world-fastapi"
+  CONTAINER_APP_NAME: "hello-world-fastapi"
+  CONTAINER_APP_ENVIRONMENT: "managedEnvironment-aca"
 
 jobs:
   buildImage:
@@ -35,3 +37,18 @@ jobs:
           docker build -t $IMAGE_NAME .
           az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
           docker push $IMAGE_NAME
+
+      - name: Azure Container Apps Build and Deploy
+        uses: Azure/container-apps-deploy-action@v2
+        with:
+          # The name of the Azure Container Registry that the runnable application image will be pushed to.
+          acrName: ${{ env.AZURE_CONTAINER_REGISTRY }}
+          imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+          targetPort: 8000
+          location: spaincentral
+          environmentVariables: APP_NAME=FastAPI Redis Cache APIAPP_VERSION=1.0.0 DEBUG=false
+          ingress: external
+          
