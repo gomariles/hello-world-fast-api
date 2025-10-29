@@ -37,7 +37,11 @@ jobs:
           docker build -t $IMAGE_NAME .
           az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
           docker push $IMAGE_NAME
-
+  
+  deploy:
+    needs: buildImage
+    runs-on: ubuntu-latest
+    steps:
       - name: Azure Container Apps Build and Deploy
         uses: Azure/container-apps-deploy-action@v2
         with:
