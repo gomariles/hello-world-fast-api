@@ -51,8 +51,16 @@ Edit `.env` file with your configuration:
 # Redis Configuration
 REDIS_HOST=your-redis-host
 REDIS_PORT=6379
-REDIS_PASSWORD=your-redis-password
 REDIS_SSL=true
+
+# Redis Authentication - Choose one method:
+# Option 1: Password authentication (legacy)
+REDIS_PASSWORD=your-redis-password
+REDIS_USE_ENTRAID=false
+
+# Option 2: Entra ID with Managed Identity (recommended for Azure)
+# REDIS_USE_ENTRAID=true
+# REDIS_USERNAME=default
 
 # Application Insights
 APPLICATIONINSIGHTS_CONNECTION_STRING=your-connection-string
@@ -79,9 +87,25 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 ### Redis Settings
 - `REDIS_HOST` - Redis server hostname
 - `REDIS_PORT` - Redis server port (default: 6379)
-- `REDIS_PASSWORD` - Redis authentication password
 - `REDIS_SSL` - Enable SSL connection (true/false)
 - `REDIS_DB` - Redis database number (default: 0)
+
+#### Redis Authentication Options
+
+**Option 1: Password Authentication (Legacy)**
+- `REDIS_PASSWORD` - Redis authentication password
+- `REDIS_USE_ENTRAID` - Set to `false` (default)
+
+**Option 2: Entra ID with Managed Identity (Recommended for Azure)**
+- `REDIS_USE_ENTRAID` - Set to `true` to enable Entra ID authentication
+- `REDIS_USERNAME` - Username for Entra ID authentication (typically "default" or the object ID of the managed identity)
+
+When using Entra ID authentication:
+- The application uses Azure Managed Identity to authenticate with Redis
+- No password is required
+- The Managed Identity must have appropriate permissions (e.g., "Redis Cache Contributor" role) on the Azure Redis Cache resource
+- SSL must be enabled (`REDIS_SSL=true`)
+- Tokens are automatically refreshed before expiration
 
 ### Application Insights
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` - Connection string for Azure Application Insights
@@ -161,11 +185,15 @@ The application includes comprehensive telemetry with Application Insights:
 
 ## Security Considerations
 
-- Use Azure Managed Identity for Redis authentication when possible
+- **Use Azure Managed Identity for Redis authentication** - The application now supports Entra ID authentication with Managed Identity, which is more secure than password-based authentication
 - Store sensitive configuration in Azure Key Vault
-- Enable SSL/TLS for Redis connections in production
+- Enable SSL/TLS for Redis connections in production (required for Entra ID authentication)
 - Implement proper authentication and authorization for your API endpoints
 - Use HTTPS in production environments
+- When using Entra ID authentication:
+  - Ensure the Managed Identity has the minimum required permissions (e.g., "Redis Cache Contributor" or custom roles)
+  - Tokens are automatically refreshed, eliminating the need for manual credential rotation
+  - No passwords are stored in configuration or environment variables
 
 ## Error Handling
 
